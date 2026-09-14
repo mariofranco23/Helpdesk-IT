@@ -16,7 +16,7 @@ class MFAEnrollmentStart(BaseModel):
 
 class MFAEnrollmentVerify(BaseModel):
     """Verifica el código TOTP para completar enrolamiento"""
-    code: str = Field(..., regex=r"^\d{6}$", description="Código TOTP de 6 dígitos")
+    code: str = Field(..., pattern=r"^\d{6}$", description="Código TOTP de 6 dígitos")
     recovery_codes_acknowledged: bool = Field(
         default=False,
         description="Usuario confirmó que guardó los códigos de recuperación"
@@ -25,7 +25,7 @@ class MFAEnrollmentVerify(BaseModel):
 
 class MFAVerifyRequest(BaseModel):
     """Verifica TOTP en login"""
-    code: str = Field(..., regex=r"^\d{6}$", description="Código TOTP de 6 dígitos")
+    code: str = Field(..., pattern=r"^\d{6}$", description="Código TOTP de 6 dígitos")
 
 
 class MFARecoveryCodeRequest(BaseModel):

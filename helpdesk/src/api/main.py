@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 
 from src.models import Base
-from src.api.routes import auth, tickets
+from src.api.routes import auth, tickets, messages, approvals
 
 # Crear aplicación
 app = FastAPI(
@@ -35,6 +35,8 @@ app.add_middleware(
 # Incluir routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(tickets.router, prefix="/api/v1/tickets", tags=["tickets"])
+app.include_router(messages.router, prefix="/api/v1/tickets", tags=["messages"])
+app.include_router(approvals.router, prefix="/api/v1/tickets", tags=["approvals"])
 
 # Health check
 @app.get("/health")
