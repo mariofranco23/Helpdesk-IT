@@ -10,13 +10,13 @@ import os
 from datetime import datetime
 
 from src.models import Base
-from src.api.routes import auth
+from src.api.routes import auth, tickets
 
 # Crear aplicación
 app = FastAPI(
     title="Mesa de Ayuda IT",
     description="Plataforma de gestión de tickets multi-tenant para soporte IT",
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
@@ -34,6 +34,7 @@ app.add_middleware(
 
 # Incluir routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(tickets.router, prefix="/api/v1/tickets", tags=["tickets"])
 
 # Health check
 @app.get("/health")
