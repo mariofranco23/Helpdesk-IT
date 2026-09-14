@@ -185,17 +185,67 @@ All endpoints include:
 - **Flexibility**: work_date allows backdating entries for catch-up time logging
 - **Automatic Messaging**: Each entry creates a TIME_ENTRY system message with minutes → hours conversion
 
+## Authentication Integration ✅
+
+### Session Validation Middleware
+All endpoints are now protected with proper session validation:
+
+```python
+async def get_authenticated_user(
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = Header(None),
+) -> AuthenticatedUser:
+    """Validates Bearer token against database sessions"""
+```
+
+**Flow:**
+1. Extract `Bearer <token>` from Authorization header
+2. Hash token with SHA-256
+3. Query sessions table for matching token_hash
+4. Verify session not expired (expires_at > now)
+5. Load associated User and extract company_id, role
+6. Return AuthenticatedUser with validated context
+7. Return 401 if invalid or expired
+
+### Multi-Tenant Enforcement
+- **No hardcoded UUIDs**: All endpoints use `user.company_id` from session
+- **Verified company isolation**: company_id extracted from token, never trusted from client
+- **Automatic filtering**: Services filter all queries by company_id from authenticated user
+
+### Role-Based Access Control
+```python
+@router.post("/{ticket_id}/assign")
+async def assign_ticket(
+    ticket_id: UUID,
+    user: AuthenticatedUser = Depends(
+        require_role("COMPANY_ADMIN", "IT_SUPERVISOR")
+    ),
+):
+    """Only admins/supervisors can assign"""
+```
+
+### Error Handling
+- **401 Unauthorized**: Invalid/missing/expired token
+- **403 Forbidden**: Valid token but insufficient role
+- **404 Not Found**: Resource not in user's company
+
+### Documentation
+- `AUTH_INTEGRATION.md` provides complete integration guide
+- Testing examples with curl and Python
+- Environment variable setup instructions
+
 ## Known Limitations & Future Work
 
 ### Current Limitations
-1. **Hardcoded UUIDs**: All endpoints currently use placeholder company_id (00000000-0000-0000-0000-000000000001) and user IDs. These should be extracted from validated session tokens in production.
+1. ✅ **Hardcoded UUIDs**: FIXED - All endpoints now use authenticated session context
 2. **No Database Connection**: Migration has been created but not tested against a live PostgreSQL instance
-3. **No Authentication Middleware**: Session validation not integrated into routes; auth layer from Etapa 1 needs to be connected
+3. ✅ **Authentication Middleware**: COMPLETE - Session validation integrated into all routes
 4. **No Rate Limiting**: Endpoints are open to potential abuse
 5. **No Audit Logging**: Changes are not logged beyond system messages
 6. **No Soft Deletes**: Deleted records are permanently removed
 7. **No Conflict Resolution**: Concurrent edits to same ticket not handled
 8. **No Optimistic Locking**: No version/timestamp field for concurrency control
+9. **No Refresh Tokens**: Sessions have fixed 8-hour duration, no renewal
 
 ### Etapa 3 (Email & WhatsApp Integration)
 - Message delivery service to send messages to email addresses
