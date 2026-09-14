@@ -11,6 +11,7 @@ from src.schemas.approval import (
     CostApprovalCreate, CostApprovalApprove, CostApprovalReject, CostApprovalResponse,
     TimeEntryCreate, TimeEntryResponse
 )
+from src.api.dependencies import get_authenticated_user, AuthenticatedUser
 
 router = APIRouter()
 
@@ -28,20 +29,18 @@ def get_time_entry_service(db: Session = Depends(get_db)) -> TimeEntryService:
 async def request_cost_approval(
     ticket_id: UUID,
     request: CostApprovalCreate,
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: ApprovalService = Depends(get_approval_service),
 ):
     """Solicitar aprobación de costo para un ticket"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")
-    requested_by = UUID("00000000-0000-0000-0000-000000000003")
-
     approval = service.request_cost_approval(
-        company_id=company_id,
+        company_id=user.company_id,
         ticket_id=ticket_id,
         amount=request.amount,
         concept=request.concept,
         currency=request.currency,
         description=request.description,
-        requested_by=requested_by,
+        requested_by=user.user_id,
     )
 
     if not approval:
@@ -70,13 +69,12 @@ async def list_cost_approvals(
     status: str = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: ApprovalService = Depends(get_approval_service),
 ):
     """Listar aprobaciones de costo de un ticket"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")
-
     approvals = service.list_cost_approvals(
-        company_id=company_id,
+        company_id=user.company_id,
         ticket_id=ticket_id,
         status=status,
         limit=limit,
@@ -108,15 +106,14 @@ async def approve_cost(
     ticket_id: UUID,
     approval_id: UUID,
     request: CostApprovalApprove,
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: ApprovalService = Depends(get_approval_service),
 ):
     """Aprobar un costo solicitado"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")
-
     approval = service.approve_cost(
-        company_id=company_id,
+        company_id=user.company_id,
         approval_id=approval_id,
-        approved_by=request.approved_by,
+        approved_by=user.user_id,
     )
 
     if not approval:
@@ -144,15 +141,14 @@ async def reject_cost(
     ticket_id: UUID,
     approval_id: UUID,
     request: CostApprovalReject,
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: ApprovalService = Depends(get_approval_service),
 ):
     """Rechazar un costo solicitado"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")
-
     approval = service.reject_cost(
-        company_id=company_id,
+        company_id=user.company_id,
         approval_id=approval_id,
-        rejected_by=request.rejected_by,
+        rejected_by=user.user_id,
         rejection_reason=request.rejection_reason,
     )
 
@@ -181,16 +177,14 @@ async def reject_cost(
 async def create_time_entry(
     ticket_id: UUID,
     request: TimeEntryCreate,
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TimeEntryService = Depends(get_time_entry_service),
 ):
     """Registrar tiempo trabajado en un ticket"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")
-    agent_id = UUID("00000000-0000-0000-0000-000000000003")
-
     entry = service.create_time_entry(
-        company_id=company_id,
+        company_id=user.company_id,
         ticket_id=ticket_id,
-        agent_id=agent_id,
+        agent_id=user.user_id,
         duration_minutes=request.duration_minutes,
         work_type=request.work_type,
         description=request.description,
@@ -220,13 +214,12 @@ async def list_time_entries(
     billing_status: str = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TimeEntryService = Depends(get_time_entry_service),
 ):
     """Listar registros de tiempo de un ticket"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")
-
     entries = service.list_time_entries(
-        company_id=company_id,
+        company_id=user.company_id,
         ticket_id=ticket_id,
         agent_id=agent_id,
         billing_status=billing_status,
@@ -255,12 +248,11 @@ async def list_time_entries(
 async def get_time_entry(
     ticket_id: UUID,
     entry_id: UUID,
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TimeEntryService = Depends(get_time_entry_service),
 ):
     """Obtener detalle de un registro de tiempo"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")
-
-    entry = service.get_time_entry(company_id, entry_id)
+    entry = service.get_time_entry(user.company_id, entry_id)
     if not entry or entry.ticket_id != ticket_id:
         raise HTTPException(status_code=404, detail="Registro de tiempo no encontrado")
 

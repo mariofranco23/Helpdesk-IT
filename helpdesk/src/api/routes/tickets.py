@@ -22,6 +22,7 @@ from src.schemas.ticket import (
     TicketCreate, TicketUpdate, TicketResponse, TicketListResponse, TicketDetailResponse
 )
 from src.models.ticket import TicketStatus, Priority
+from src.api.dependencies import get_authenticated_user, AuthenticatedUser
 
 router = APIRouter()
 
@@ -33,16 +34,11 @@ def get_ticket_service(db: Session = Depends(get_db)) -> TicketService:
 @router.post("/", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
 async def create_ticket(
     request: TicketCreate,
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TicketService = Depends(get_ticket_service),
-    # TODO: Obtener company_id y user_id de sesión válida
-    # Por ahora hardcodeados para desarrollo
 ):
     """Crear nuevo ticket (portal web - paso 3)"""
-    # En producción, company_id y requester_id vienen de sesión validada
-    company_id = UUID("00000000-0000-0000-0000-000000000001")  # Placeholder
-    requester_id = UUID("00000000-0000-0000-0000-000000000002")  # Placeholder
-
-    ticket = service.create_ticket(company_id, requester_id, request)
+    ticket = service.create_ticket(user.company_id, user.user_id, request)
 
     return TicketResponse(
         id=ticket.id,
@@ -70,13 +66,12 @@ async def list_tickets(
     assigned_to: UUID = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TicketService = Depends(get_ticket_service),
 ):
     """Listar tickets con filtros (consola de casos)"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")  # Placeholder
-
     tickets = service.list_tickets(
-        company_id=company_id,
+        company_id=user.company_id,
         status=status,
         assigned_to=assigned_to,
         limit=limit,
@@ -103,12 +98,11 @@ async def list_tickets(
 @router.get("/{ticket_id}", response_model=TicketDetailResponse)
 async def get_ticket(
     ticket_id: UUID,
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TicketService = Depends(get_ticket_service),
 ):
     """Obtener detalle del ticket"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")  # Placeholder
-
-    ticket = service.get_ticket(company_id, ticket_id)
+    ticket = service.get_ticket(user.company_id, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
 
@@ -148,13 +142,11 @@ async def get_ticket(
 async def update_ticket(
     ticket_id: UUID,
     request: TicketUpdate,
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TicketService = Depends(get_ticket_service),
 ):
     """Actualizar ticket (cambiar estado, prioridad, etc)"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")  # Placeholder
-    agent_id = UUID("00000000-0000-0000-0000-000000000003")  # Placeholder
-
-    ticket = service.update_ticket(company_id, ticket_id, request, agent_id)
+    ticket = service.update_ticket(user.company_id, ticket_id, request, user.user_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
 
@@ -182,13 +174,11 @@ async def update_ticket(
 async def assign_ticket(
     ticket_id: UUID,
     agent_id: UUID = Query(...),
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TicketService = Depends(get_ticket_service),
 ):
     """Asignar ticket a un agente"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")  # Placeholder
-    assigned_by = UUID("00000000-0000-0000-0000-000000000003")  # Placeholder
-
-    ticket = service.assign_ticket(company_id, ticket_id, agent_id, assigned_by)
+    ticket = service.assign_ticket(user.company_id, ticket_id, agent_id, user.user_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
 
@@ -199,13 +189,11 @@ async def assign_ticket(
 async def close_ticket(
     ticket_id: UUID,
     resolution_summary: str = Query(..., min_length=10),
+    user: AuthenticatedUser = Depends(get_authenticated_user),
     service: TicketService = Depends(get_ticket_service),
 ):
     """Cerrar ticket con resumen de resolución"""
-    company_id = UUID("00000000-0000-0000-0000-000000000001")  # Placeholder
-    closed_by = UUID("00000000-0000-0000-0000-000000000003")  # Placeholder
-
-    ticket = service.close_ticket(company_id, ticket_id, resolution_summary, closed_by)
+    ticket = service.close_ticket(user.company_id, ticket_id, resolution_summary, user.user_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
 
