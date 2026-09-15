@@ -29,7 +29,6 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
-        literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         render_as_batch=True,
     )
@@ -56,7 +55,4 @@ def run_migrations_online() -> None:
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    try:
-        run_migrations_online()
-    except Exception:
-        run_migrations_offline()
+    run_migrations_online()
