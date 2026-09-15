@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Ticket, TicketStatus } from '../../types'
+import { apiClient } from '../../services/api'
+import TicketCard from '../../components/TicketCard'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
 
 export default function MyTickets() {
   const navigate = useNavigate()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>('')
   const [filter, setFilter] = useState<TicketStatus | 'ALL'>('ALL')
 
   useEffect(() => {
@@ -14,45 +19,22 @@ export default function MyTickets() {
 
   const fetchTickets = async () => {
     try {
-      const url =
-        filter === 'ALL'
-          ? '/api/tickets'
-          : `/api/tickets?status=${filter}`
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        },
+      setLoading(true)
+      setError('')
+      const data = await apiClient.getTickets({
+        status: filter === 'ALL' ? undefined : filter,
       })
-
-      if (response.ok) {
-        const data = await response.json()
-        setTickets(data)
-      }
+      setTickets(data)
     } catch (err) {
-      console.error('Error fetching tickets:', err)
+      const message = err instanceof Error ? err.message : 'Error al cargar tickets'
+      setError(message)
     } finally {
       setLoading(false)
     }
   }
 
-  const getStatusColor = (status: TicketStatus) => {
-    const colors: Record<TicketStatus, string> = {
-      [TicketStatus.NEW]: 'bg-blue-100 text-blue-800',
-      [TicketStatus.OPEN]: 'bg-yellow-100 text-yellow-800',
-      [TicketStatus.IN_PROCESS]: 'bg-purple-100 text-purple-800',
-      [TicketStatus.WAITING_CLIENT]: 'bg-orange-100 text-orange-800',
-      [TicketStatus.WAITING_APPROVAL]: 'bg-indigo-100 text-indigo-800',
-      [TicketStatus.WAITING_THIRD_PARTY]: 'bg-pink-100 text-pink-800',
-      [TicketStatus.RESOLVED]: 'bg-green-100 text-green-800',
-      [TicketStatus.CLOSED]: 'bg-gray-100 text-gray-800',
-      [TicketStatus.CANCELLED]: 'bg-red-100 text-red-800',
-    }
-    return colors[status] || 'bg-gray-100 text-gray-800'
-  }
-
   if (loading) {
-    return <div className="text-center py-8">Cargando...</div>
+    return <LoadingSpinner text="Cargando tickets..." />
   }
 
   return (
@@ -74,6 +56,14 @@ export default function MyTickets() {
         </select>
       </div>
 
+      {error && (
+        <ErrorMessage
+          message={error}
+          onDismiss={() => setError('')}
+          type="error"
+        />
+      )}
+
       {tickets.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg">
           <p className="text-gray-500">No hay tickets disponibles</p>
@@ -81,35 +71,11 @@ export default function MyTickets() {
       ) : (
         <div className="space-y-4">
           {tickets.map((ticket) => (
-            <div
+            <TicketCard
               key={ticket.id}
-              onClick={() => navigate(`/tickets/${ticket.id}`)}
-              className="bg-white rounded-lg shadow p-4 hover:shadow-md cursor-pointer transition"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="font-semibold text-lg">{ticket.title}</h3>
-                  <p className="text-sm text-gray-600">ID: {ticket.public_id}</p>
-                </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                    ticket.status
-                  )}`}
-                >
-                  {ticket.status}
-                </span>
-              </div>
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                {ticket.description}
-              </p>
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>Categoría: {ticket.category}</span>
-                <span>
-                  Creado:{' '}
-                  {new Date(ticket.created_at).toLocaleDateString('es-ES')}
-                </span>
-              </div>
-            </div>
+              ticket={ticket}
+              onClick={(id) => navigate(`/tickets/${id}`)}
+            />
           ))}
         </div>
       )}

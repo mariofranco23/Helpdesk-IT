@@ -1,16 +1,20 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { apiClient } from '../../services/api'
+import { TicketPriority } from '../../types'
+import ErrorMessage from '../../components/ErrorMessage'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 export default function CreateTicket() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string>('')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
-    priority: 'MEDIUM',
-    type: '',
+    priority: TicketPriority.MEDIUM,
   })
 
   const handleInputChange = (
@@ -21,46 +25,53 @@ export default function CreateTicket() {
   }
 
   const handleNextStep = () => {
-    if (step < 3) {
-      setStep(step + 1)
+    if (step === 1) {
+      if (!formData.title.trim()) {
+        setError('El asunto es requerido')
+        return
+      }
+      if (!formData.category) {
+        setError('La categoría es requerida')
+        return
+      }
     }
+    if (step === 2) {
+      if (!formData.description.trim()) {
+        setError('La descripción es requerida')
+        return
+      }
+    }
+    setError('')
+    setStep(step + 1)
   }
 
   const handlePrevStep = () => {
-    if (step > 1) {
-      setStep(step - 1)
-    }
+    setError('')
+    setStep(step - 1)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError('')
 
     try {
-      const response = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        navigate(`/tickets/${data.id}`)
-      } else {
-        throw new Error('Error al crear ticket')
-      }
+      const response = await apiClient.createTicket(formData)
+      navigate(`/tickets/${response.id}`)
     } catch (err) {
-      console.error(err)
+      const message = err instanceof Error ? err.message : 'Error al crear ticket'
+      setError(message)
     } finally {
       setLoading(false)
     }
   }
 
+  if (loading) {
+    return <LoadingSpinner fullScreen text="Creando ticket..." />
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold mb-6">Crear Nuevo Ticket</h2>
 
       <div className="mb-8">
@@ -81,32 +92,38 @@ export default function CreateTicket() {
         </div>
       </div>
 
+      {error && (
+        <ErrorMessage
+          message={error}
+          onDismiss={() => setError('')}
+          type="error"
+        />
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {step === 1 && (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Asunto
+                Asunto *
               </label>
               <input
                 type="text"
                 name="title"
                 value={formData.title}
                 onChange={handleInputChange}
-                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="Describe el problema brevemente"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Categoría
+                Categoría *
               </label>
               <select
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecciona una categoría</option>
@@ -124,13 +141,12 @@ export default function CreateTicket() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Descripción Detallada
+                Descripción Detallada *
               </label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                required
                 rows={6}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="Describe el problema con el máximo detalle posible"
@@ -146,10 +162,10 @@ export default function CreateTicket() {
                 onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                <option value="LOW">Baja</option>
-                <option value="MEDIUM">Media</option>
-                <option value="HIGH">Alta</option>
-                <option value="CRITICAL">Crítica</option>
+                <option value={TicketPriority.LOW}>Baja</option>
+                <option value={TicketPriority.MEDIUM}>Media</option>
+                <option value={TicketPriority.HIGH}>Alta</option>
+                <option value={TicketPriority.CRITICAL}>Crítica</option>
               </select>
             </div>
           </div>
@@ -158,21 +174,25 @@ export default function CreateTicket() {
         {step === 3 && (
           <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
             <h3 className="font-semibold text-gray-900">Resumen del Ticket</h3>
-            <div>
-              <p className="text-sm text-gray-600">Asunto</p>
-              <p className="font-medium">{formData.title}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Categoría</p>
-              <p className="font-medium">{formData.category}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Prioridad</p>
-              <p className="font-medium">{formData.priority}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Asunto</p>
+                <p className="font-medium">{formData.title}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Categoría</p>
+                <p className="font-medium">{formData.category}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Prioridad</p>
+                <p className="font-medium">{formData.priority}</p>
+              </div>
             </div>
             <div>
               <p className="text-sm text-gray-600">Descripción</p>
-              <p className="font-medium text-sm">{formData.description}</p>
+              <p className="font-medium text-sm whitespace-pre-wrap">
+                {formData.description}
+              </p>
             </div>
           </div>
         )}
@@ -182,7 +202,7 @@ export default function CreateTicket() {
             type="button"
             onClick={handlePrevStep}
             disabled={step === 1}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition"
           >
             Anterior
           </button>
@@ -190,17 +210,16 @@ export default function CreateTicket() {
             <button
               type="button"
               onClick={handleNextStep}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               Siguiente
             </button>
           ) : (
             <button
               type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400"
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
             >
-              {loading ? 'Creando...' : 'Crear Ticket'}
+              Crear Ticket
             </button>
           )}
         </div>
