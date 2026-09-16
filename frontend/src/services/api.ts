@@ -150,7 +150,7 @@ class ApiClient {
     access_token: string
     user: User
   }> {
-    return this.request('POST', '/auth/login', { email, password })
+    return this.request('POST', '/v1/auth/login', { email, password })
   }
 }
 

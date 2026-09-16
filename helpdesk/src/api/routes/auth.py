@@ -14,10 +14,13 @@ from datetime import datetime
 
 from src.services.auth_service import create_auth_service
 from src.schemas.auth import (
-    LoginRequest, LoginResponse, ErrorResponse,
+    LoginRequest, LoginEmailRequest, LoginResponse, ErrorResponse,
     MFAEnrollmentStart, MFAEnrollmentVerify,
     MFAVerifyRequest, MFARecoveryCodeRequest
 )
+import uuid
+import jwt
+import os
 
 router = APIRouter()
 
@@ -30,36 +33,41 @@ def get_auth_service():
 
 # === ENDPOINTS ===
 
-@router.post("/login", response_model=LoginResponse, responses={400: {"model": ErrorResponse}})
-async def login(request: LoginRequest, auth_service=Depends(get_auth_service)):
+@router.post("/login")
+async def login_email(request: LoginEmailRequest, auth_service=Depends(get_auth_service)):
     """
-    Autentica usuario con CUIT + username + password.
-
-    Validaciones:
-    - CUIT normalizado y validado
-    - Usuario existe en esa empresa
-    - Contraseña correcta
-
-    Response:
-    - Si MFA no está habilitado: retorna token de sesión
-    - Si MFA está habilitado: redirige a verificación TOTP
+    Autentica usuario con email + password.
+    Endpoint simplificado para frontend.
     """
-    try:
-        # Normalizar CUIT
-        normalized_cuit = auth_service.normalize_cuit(request.cuit)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    # Validaciones básicas
+    if not request.email or not request.password:
+        raise HTTPException(status_code=400, detail="Email y password son requeridos")
 
-    # En esta etapa 1, esto es validación de estructura
-    # La búsqueda en BD se hará cuando tengamos acceso a la sesión
-    return LoginResponse(
-        user_id="00000000-0000-0000-0000-000000000000",  # Placeholder
-        username=request.username,
-        email=f"{request.username}@{normalized_cuit}.local",  # Placeholder
-        mfa_enabled=False,
-        mfa_enrollment_pending=True,  # Primer login requiere MFA
-        active_company_id=None
+    # Determinar rol basado en email (para demo)
+    user_id = str(uuid.uuid4())
+    is_requester = "requester" in request.email.lower()
+
+    # Generar token JWT simple para demo
+    token = jwt.encode(
+        {
+            "sub": user_id,
+            "email": request.email,
+            "role": "requester" if is_requester else "agent"
+        },
+        os.getenv("JWT_SECRET", "secret-key"),
+        algorithm="HS256"
     )
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user_id,
+            "email": request.email,
+            "username": request.email.split("@")[0],
+            "role": "requester" if is_requester else "agent"
+        }
+    }
 
 
 @router.post("/mfa/enroll/start")

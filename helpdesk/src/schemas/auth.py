@@ -9,6 +9,11 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=8)
 
 
+class LoginEmailRequest(BaseModel):
+    email: str = Field(..., description="Email del usuario")
+    password: str = Field(..., min_length=1)
+
+
 class MFAEnrollmentStart(BaseModel):
     """Inicia enrolamiento de MFA TOTP después de login exitoso"""
     pass
