@@ -58,7 +58,7 @@ class ApiClient {
     search?: string
     assigned_to?: string
   }): Promise<Ticket[]> {
-    let endpoint = '/tickets'
+    let endpoint = '/v1/tickets'
     const params = new URLSearchParams()
 
     if (filters?.status) params.append('status', filters.status)
@@ -74,23 +74,23 @@ class ApiClient {
   }
 
   async getTicket(id: string): Promise<Ticket> {
-    return this.request<Ticket>('GET', `/tickets/${id}`)
+    return this.request<Ticket>('GET', `/v1/tickets/${id}`)
   }
 
   async createTicket(data: Partial<Ticket>): Promise<Ticket> {
-    return this.request<Ticket>('POST', '/tickets', data)
+    return this.request<Ticket>('POST', '/v1/tickets', data)
   }
 
   async updateTicket(
     id: string,
     data: Partial<Ticket>
   ): Promise<Ticket> {
-    return this.request<Ticket>('PATCH', `/tickets/${id}`, data)
+    return this.request<Ticket>('PATCH', `/v1/tickets/${id}`, data)
   }
 
   // Messages
   async getMessages(ticketId: string): Promise<Message[]> {
-    return this.request<Message[]>('GET', `/tickets/${ticketId}/messages`)
+    return this.request<Message[]>('GET', `/v1/tickets/${ticketId}/messages`)
   }
 
   async addMessage(
@@ -99,34 +99,34 @@ class ApiClient {
   ): Promise<Message> {
     return this.request<Message>(
       'POST',
-      `/tickets/${ticketId}/messages`,
+      `/v1/tickets/${ticketId}/messages`,
       data
     )
   }
 
   // Time Entries
   async getTimeEntries(): Promise<TimeEntry[]> {
-    return this.request<TimeEntry[]>('GET', '/time-entries')
+    return this.request<TimeEntry[]>('GET', '/v1/time-entries')
   }
 
   async createTimeEntry(data: Partial<TimeEntry>): Promise<TimeEntry> {
-    return this.request<TimeEntry>('POST', '/time-entries', data)
+    return this.request<TimeEntry>('POST', '/v1/time-entries', data)
   }
 
   async updateTimeEntry(
     id: string,
     data: Partial<TimeEntry>
   ): Promise<TimeEntry> {
-    return this.request<TimeEntry>('PATCH', `/time-entries/${id}`, data)
+    return this.request<TimeEntry>('PATCH', `/v1/time-entries/${id}`, data)
   }
 
   async deleteTimeEntry(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/time-entries/${id}`)
+    return this.request<void>('DELETE', `/v1/time-entries/${id}`)
   }
 
   // Cost Approvals
   async getApprovals(status?: string): Promise<CostApproval[]> {
-    let endpoint = '/approvals'
+    let endpoint = '/v1/approvals'
     if (status) {
       endpoint += `?status=${status}`
     }
@@ -137,12 +137,12 @@ class ApiClient {
     id: string,
     data: Partial<CostApproval>
   ): Promise<CostApproval> {
-    return this.request<CostApproval>('PATCH', `/approvals/${id}`, data)
+    return this.request<CostApproval>('PATCH', `/v1/approvals/${id}`, data)
   }
 
   // Dashboard
   async getDashboardStats(): Promise<any> {
-    return this.request<any>('GET', '/dashboard/stats')
+    return this.request<any>('GET', '/v1/dashboard/stats')
   }
 
   // Auth
